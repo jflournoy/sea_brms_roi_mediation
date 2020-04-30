@@ -1,0 +1,26 @@
+---
+title: "SEA ROI Mediation using `brms`"
+author: "John Flournoy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+rois_fearGTcalm <- readr::read_csv('data/Fear_GT_Calm.csv')
+rois_fearGTcalm_l <- rois_fearGTcalm %>%
+  extract(SubjectID, into = c('id', 'wave'), regex = '(\\d{4})_(\\d{2})') %>%
+  gather(key = 'key', value = 'value', -id, -wave) %>%
+  extract(key, into = c('model', 'number', 'roi'), regex = '([a-z._]+)(?:\\.|_)(\\w+)_X_(.*)', remove = FALSE)
+
+
+```
+
+```{r}
+
+```
