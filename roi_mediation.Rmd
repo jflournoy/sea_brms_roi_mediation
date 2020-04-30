@@ -12,15 +12,33 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(dplyr)
 library(tidyr)
-rois_fearGTcalm <- readr::read_csv('data/Fear_GT_Calm.csv')
+voxel_counts <- readxl::read_xlsx('data/JohnOverlappingVoxels.xlsx')
+rois_fearGTcalm <- readr::read_csv('data/Fear_GT_Calm04-29-2020.csv')
 rois_fearGTcalm_l <- rois_fearGTcalm %>%
   extract(SubjectID, into = c('id', 'wave'), regex = '(\\d{4})_(\\d{2})') %>%
   gather(key = 'key', value = 'value', -id, -wave) %>%
-  extract(key, into = c('model', 'number', 'roi'), regex = '([a-z._]+)(?:\\.|_)(\\w+)_X_(.*)', remove = FALSE)
-
-
+  extract(key, into = c('model', 'number', 'roi'), regex = '([a-z._]+)(?:\\.|_)(\\w+)_X_(.*)', remove = FALSE) %>%
+  mutate(roi = case_when(roi == 'FreeSurfer_a2009s' ~ 'All',
+                         TRUE ~ roi),
+         wave = as.numeric(wave)) %>%
+  arrange(model, number, roi)
 ```
 
-```{r}
+```{r fig.width=8, fig.height=10.5}
+library(ggplot2)
 
+ggplot(filter(rois_fearGTcalm_l, roi != 'All'), 
+       aes(wave, value, group = roi, color = roi)) + 
+  geom_line(data = filter(rois_fearGTcalm_l, roi == 'All'),
+            aes(group = id), 
+            stat = 'smooth', method = 'gam',
+            formula = y ~ s(x, k = 5, bs = 'tp', fx = FALSE),
+            color = 'black', alpha = .1) + 
+  geom_line(stat = 'smooth', method = 'loess') + 
+  geom_line(data = filter(rois_fearGTcalm_l, roi == 'All'), 
+            stat = 'smooth', method = 'loess', color = 'black') + 
+  facet_wrap(~model+number, ncol = 2) + 
+  theme_minimal() +
+  theme(legend.position = 'none') +
+  coord_cartesian(ylim = c(-2.5, 2.5))
 ```
