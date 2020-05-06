@@ -22,8 +22,8 @@ if(Sys.getenv('HOME') != '/users/jflournoy'){
   warmup <- 200
   iter <- 500
 } else {
-  task_id <- Sys.getenv('SLURM_ARRAY_TASK_ID')
-  cpus_per_task <- Sys.getenv('SLURM_CPUS_PER_TASK')
+  task_id <- as.numeric(Sys.getenv('SLURM_ARRAY_TASK_ID'))
+  cpus_per_task <- as.numeric(Sys.getenv('SLURM_CPUS_PER_TASK'))
   warmup <- 2500
   iter <- 7500
   message('Running on SLURM system')
@@ -146,3 +146,5 @@ medmod_fit_throwaway <- brms::brm(ymod + mmod,
                                   save_dso = TRUE,
                                   file = file.path(model_obj_dir, fname),
                                   silent = TRUE, open_progress = FALSE)
+
+sessionInfo()
