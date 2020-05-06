@@ -6,7 +6,7 @@
 #SBATCH --nodes 1
 #SBATCH --ntasks 1
 #SBATCH --time 0-12:00
-#SBATCH -o %x_%A_%a.out
+#SBATCH -o log/%x_%A_%a.out
 #SBATCH --mail-user=john_flournoy@fas.harvard.edu
 #SBATCH --mail-type=ALL
 
@@ -17,6 +17,6 @@ cp ~/.R/Makevars.gcc ~/.R/Makevars
 
 export R_LIBS_USER=/ncf/mclaughlin/users/jflournoy/R_3.5.1_GCC:$R_LIBS_USER
 
-runme=/ncf/mclaughlin/users/jflournoy/code/
+runme=/net/holynfs01/srv/export/mclaughlin/share_root/users/jflournoy/code/sea_brms_roi_mediation/chunks_to_batch.R
 
-srun -c 4 `which Rscript` 
+srun -c 4 `which Rscript` "${runme}"
