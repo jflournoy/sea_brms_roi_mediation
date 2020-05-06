@@ -142,7 +142,7 @@ medmod_fit_throwaway <- brms::brm(ymod + mmod,
                                   seed = seed,
                                   warmup = warmup, iter = iter,
                                   control = list(adapt_delta = 0.999,max_treedepth = 20),
-                                  save_model = file.path(model_text_dir, fname),
+                                  save_model = file.path(model_text_dir, paste0(fname, '.stan')),
                                   save_dso = TRUE,
                                   file = file.path(model_obj_dir, fname),
                                   silent = TRUE, open_progress = FALSE)

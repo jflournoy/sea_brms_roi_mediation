@@ -1,0 +1,69 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: Rcpp
+This version of Shiny is designed to work with 'htmlwidgets' >= 1.5.
+    Please upgrade via install.packages('htmlwidgets').
+Loading 'brms' package (version 2.12.0). Useful instructions
+can be found by typing help('brms'). A more detailed introduction
+to the package is available through vignette('brms_overview').
+
+Attaching package: ‘brms’
+
+The following object is masked from ‘package:stats’:
+
+    ar
+
+Running on SLURM system
+Parsed with column specification:
+cols(
+  .default = col_double(),
+  SubjectID = col_character()
+)
+See spec(...) for full column specifications.
+Parsed with column specification:
+cols(
+  .default = col_double(),
+  idnum = col_integer(),
+  TIMECENTER = col_integer(),
+  time = col_integer(),
+  PHQ9_TOT_with_errors = col_integer(),
+  GAD7_TOT_with_errors = col_integer(),
+  LSA_ANX_with_errors = col_integer(),
+  PANASNEG = col_integer(),
+  PANASPOS = col_integer(),
+  PANASNEG_lead = col_integer(),
+  PANASPOS_lead = col_integer(),
+  ID = col_integer(),
+  TIME = col_integer(),
+  EPISODICNUM = col_integer(),
+  IP_EPISODICNUM = col_integer()
+)
+See spec(...) for full column specifications.
+Fitting model...
+Setting 'rescor' to TRUE by default for this model
+Compiling the C++ model
+Error in compileCode(f, code, language = language, verbose = verbose) : 
+  Compilation ERROR, function(s)/method(s) not created! /bin/sh: I/n/helmod/apps/centos7/Core/R_core/3.5.1-fasrc01/lib64/R/include: No such file or directory
+make: [file3a0f962cd0ccb.o] Error 127 (ignored)
+/bin/sh: line 2: -shared: command not found
+make: *** [file3a0f962cd0ccb.so] Error 127
+Calls: <Anonymous> ... cxxfunctionplus -> <Anonymous> -> cxxfunction -> compileCode
+In addition: Warning messages:
+1: In .fun(model_code = .x1) :
+  C++ compiler not found on system. If absent, see
+ https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started
+2: In system(cmd, intern = !verbose) :
+  running command '/n/helmod/apps/centos7/Core/R_core/3.5.1-fasrc01/lib64/R/bin/R CMD SHLIB file3a0f962cd0ccb.cpp 2> file3a0f962cd0ccb.cpp.err.txt' had status 1
+Error in sink(type = "output") : invalid connection
+Calls: <Anonymous> ... eval2 -> eval -> eval -> .fun -> cxxfunctionplus -> sink
+Execution halted
+srun: error: holy7c22405: task 0: Exited with exit code 1
