@@ -2,29 +2,30 @@
 title: "SEA ROI Mediation using `brms`"
 author: "John Flournoy"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::read_chunk('chunks_to_batch.R')
 ```
 
-```{r}
-library(dplyr)
-library(tidyr)
-voxel_counts <- readxl::read_xlsx('data/JohnOverlappingVoxels.xlsx')
-rois_fearGTcalm <- readr::read_csv('data/Fear_GT_Calm04-29-2020.csv')
-rois_fearGTcalm_l <- rois_fearGTcalm %>%
-  extract(SubjectID, into = c('id', 'wave'), regex = '(\\d{4})_(\\d{2})') %>%
-  gather(key = 'key', value = 'value', -id, -wave) %>%
-  extract(key, into = c('model', 'number', 'roi'), regex = '([a-z._]+)(?:\\.|_)(\\w+)_X_(.*)', remove = FALSE) %>%
-  mutate(roi = case_when(roi == 'FreeSurfer_a2009s' ~ 'All',
-                         TRUE ~ roi),
-         wave = as.numeric(wave)) %>%
-  arrange(model, number, roi)
+# Set up data
+
+```{r load_data, message = FALSE}
 ```
 
-```{r fig.width=8, fig.height=10.5}
+# Plots {.tabset}
+
+The "Between" plot is just a check---it's entirely flat, as it should be.
+
+## Raw
+
+```{r fig.width=8, fig.height=10.5, eval = F}
 library(ggplot2)
 
 ggplot(filter(rois_fearGTcalm_l, roi != 'All'), 
@@ -40,5 +41,138 @@ ggplot(filter(rois_fearGTcalm_l, roi != 'All'),
   facet_wrap(~model+number, ncol = 2) + 
   theme_minimal() +
   theme(legend.position = 'none') +
-  coord_cartesian(ylim = c(-2.5, 2.5))
+  coord_cartesian(ylim = c(-1.5, 1.5))
+```
+
+## Within
+
+```{r fig.width=8, fig.height=10.5, eval = F}
+library(ggplot2)
+
+ggplot(rois_fearGTcalm_l_disag, aes(x = wave, y = wi_brain, group = roi, color = roi)) + 
+  geom_line(data = filter(rois_fearGTcalm_l_disag, roi == 'All'),
+            aes(group = id), 
+            stat = 'smooth', method = 'gam',
+            formula = y ~ s(x, k = 5, bs = 'tp', fx = FALSE),
+            color = 'black', alpha = .1) + 
+  geom_line(stat = 'smooth', method = 'loess') +
+  geom_line(data = filter(rois_fearGTcalm_l_disag, roi == 'All'),
+            stat = 'smooth', method = 'loess', color = 'black') +
+  facet_wrap(~model+number, ncol = 2) +
+  theme_minimal() +
+  theme(legend.position = 'none') +
+  coord_cartesian(ylim = c(-1.5, 1.5))
+```
+
+## Between
+
+```{r fig.width=8, fig.height=10.5, eval = F}
+library(ggplot2)
+
+ggplot(rois_fearGTcalm_l_disag, aes(x = wave, y = bw_brain, group = roi, color = roi)) + 
+  geom_line(data = filter(rois_fearGTcalm_l_disag, roi == 'All'),
+            aes(group = id), 
+            stat = 'smooth', method = 'gam',
+            formula = y ~ s(x, k = 5, bs = 'tp', fx = FALSE),
+            color = 'black', alpha = .1) + 
+  geom_line(stat = 'smooth', method = 'loess') +
+  geom_line(data = filter(rois_fearGTcalm_l_disag, roi == 'All'),
+            stat = 'smooth', method = 'loess', color = 'black') +
+  facet_wrap(~model+number, ncol = 2) +
+  theme_minimal() +
+  theme(legend.position = 'none') +
+  coord_cartesian(ylim = c(-1.5, 1.5))
+```
+
+# Fit models
+
+Models are fit on the FAS RC NCF supercomputing cluster.
+
+```{r eval = FALSE}
+<<estimate_model>>
+```
+
+# Results and diagnostics
+
+```{r}
+make_title <- function(X, M, Y, level = 3){
+  title <- paste(c(X, M, Y), collapse = ' $\\rightarrow$ ')
+  return(paste0(paste(rep('#', level), collapse = ''), ' ', title))
+}
+show_diagnostics <- function(fname, model_obj_dir){
+  model_obj <- file.path(model_obj_dir, paste0(fname, '.rds'))
+  if(!file.exists(model_obj)){
+    message('Could not find file: ', model_obj)
+  } else {
+    medmod_fit <- readRDS(model_obj)
+    np <- brms::nuts_params(medmod_fit)
+    ratios <- brms::neff_ratio(medmod_fit)
+    rhat <- brms::rhat(medmod_fit)
+    
+    med_post <- brms::posterior_samples(medmod_fit, 
+                                        pars = c('b_Y_wi_brain',
+                                                 'b_brain_wi_X',
+                                                 'b_Y_wi_X'), 
+                                        add_chain = TRUE)
+    med_post$cov_Y_wi_brain__brain_wi_X <- VarCorr(medmod_fit, summary = F)$id$cov[,'Y_wi_brain','brain_wi_X']
+    med_post$me <- med_post$b_Y_wi_brain * med_post$b_brain_wi_X + med_post$cov_Y_wi_brain__brain_wi_X
+    med_post$c <- med_post$me + med_post$b_Y_wi_brain
+    med_post$pme <- abs(med_post$me/med_post$c)
+    
+    posterior_rownames <- c('$b_{M\\rightarrow Y}$',
+                            '$a_{X\\rightarrow M}$',
+                            '$c\'_{X\\rightarrow Y}$',
+                            '$\\text{cov}(a,b)$',
+                            '$\\text{ME} = a \\cdot b + \\text{cov}(a,b)$',
+                            '$\\text{Total} = \\text{ME} + c\'_{X\\rightarrow Y}$',
+                            '$\\text{PME} = \\big|\\frac{\\text{ME}}{\\text{Total}}\\big|$')
+    posterior_summary <- brms::posterior_summary(med_post[, -c(4,5)], robust = TRUE)
+    rownames(posterior_summary) <- posterior_rownames
+    cat('\n\n#### Summary\n\n')
+    print(knitr::kable(posterior_summary,
+                       col.names = c('Median', 'Est. Error',
+                                     'Credible interval: 2.5%', '97.5%')))
+    cat('\n\n#### $N_{eff}$\n\n')
+    print(bayesplot::mcmc_neff(ratios))
+    cat('\n\n#### NUTS energy\n\n')
+    print(bayesplot::mcmc_nuts_energy(np))
+    cat('\n\n#### $\\hat{r}$\n\n')
+    print(bayesplot::mcmc_rhat(rhat))
+    cat('\n\n#### Trace\n\n')
+    print(bayesplot::mcmc_trace(med_post[, -5], np = np))
+  }
+}
+```
+
+```{r results = 'asis', message = FALSE}
+by_roi <- split(variable_combos, paste0(variable_combos$model, variable_combos$number))
+
+for(i in 1:7){
+  aset <- by_roi[[i]]
+  cat(
+    paste0('\n\n', 
+      make_title(aset[1, 'X_name'], paste0(aset[1, 'model'], '.', aset[1, 'number']), 'Y',
+                 level = 2),
+      ' {.tabset}\n\n'))
+  for(j in 1:dim(aset)[1]){
+    varselect <- aset[j,]
+    fname <- paste(varselect, collapse = '_')
+    cat(paste0('\n\n', make_title('X', 'M', varselect['Y_name'], level = 3), '{.tabset}\n\n'))
+    show_diagnostics(fname, model_obj_dir)
+  }
+}
+for(i in 8:10){
+  aset <- by_roi[[i]]
+  cat(
+    paste0(
+      make_title('X', paste0(aset[1, 'model'], '.', aset[1, 'number']), aset[1, 'Y_name'],
+                 level = 2),
+      ' {.tabset}\n\n'))
+  for(j in 1:dim(aset)[1]){
+    varselect <- aset[j,]
+    fname <- paste(varselect, collapse = '_')
+    cat(paste0(make_title(varselect['X_name'], 'M', 'Y', level = 3), '\n\n'))
+    #show_diagnostics(fname, model_obj_dir)
+  }
+}
 ```
