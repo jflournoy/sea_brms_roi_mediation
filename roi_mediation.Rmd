@@ -95,6 +95,8 @@ Models are fit on the FAS RC NCF supercomputing cluster.
 # Results and diagnostics
 
 ```{r}
+library(patchwork)
+
 make_title <- function(X, M, Y, level = 3){
   title <- paste(c(X, M, Y), collapse = ' $\\rightarrow$ ')
   return(paste0(paste(rep('#', level), collapse = ''), ' ', title))
@@ -119,6 +121,11 @@ show_diagnostics <- function(fname, model_obj_dir){
     med_post$c <- med_post$me + med_post$b_Y_wi_brain
     med_post$pme <- abs(med_post$me/med_post$c)
     
+    med_post_ridges <- dplyr::select(med_post, -iter, -chain) %>%
+      rename(b = b_Y_wi_brain, a = b_brain_wi_X, cp = b_Y_wi_X,
+             covab = cov_Y_wi_brain__brain_wi_X, 
+             me = me, total = c, pme = pme)
+    
     posterior_rownames <- c('$b_{M\\rightarrow Y}$',
                             '$a_{X\\rightarrow M}$',
                             '$c\'_{X\\rightarrow Y}$',
@@ -126,8 +133,40 @@ show_diagnostics <- function(fname, model_obj_dir){
                             '$\\text{ME} = a \\cdot b + \\text{cov}(a,b)$',
                             '$\\text{Total} = \\text{ME} + c\'_{X\\rightarrow Y}$',
                             '$\\text{PME} = \\big|\\frac{\\text{ME}}{\\text{Total}}\\big|$')
+    posterior_ridgenames <- c(b = quote(b),
+                              a = quote(a),
+                              cp = quote(paste(c, "'")),
+                              covab = quote(plain(cov) (a,b)),
+                              me = quote(paste(plain(ME), " = ", a %.% b + plain(cov)(a,b))),
+                              total = quote(paste(plain(Total), " = ", plain(ME) + c, "'")),
+                              pme = quote(paste(plain(PME), " = ", frac(paste("|", plain(ME), "|"), paste("|", plain(Total), "|")))))
     posterior_summary <- brms::posterior_summary(med_post[, -c(4,5)], robust = TRUE)
     rownames(posterior_summary) <- posterior_rownames
+    
+    cat('\n\n#### Density Plots\n\n')
+    prob <- .95
+    prob_outer <- .99
+    p1 <- bayesplot::mcmc_areas_ridges(select(med_post_ridges, a, b, me),
+                                       prob = prob, prob_outer = prob_outer) + 
+      ggplot2::scale_y_discrete(breaks = names(posterior_ridgenames), 
+                                labels = posterior_ridgenames,
+                                limits = c('me', 'b', 'a'))
+    p2 <- bayesplot::mcmc_areas_ridges(select(med_post_ridges, pme),
+                                       prob = prob, prob_outer = prob_outer) + 
+      ggplot2::scale_y_discrete(breaks = names(posterior_ridgenames), 
+                                labels = posterior_ridgenames,
+                                limits = c('pme'))
+    p3 <- bayesplot::mcmc_areas_ridges(select(med_post_ridges, covab),
+                                       prob = prob, prob_outer = prob_outer) + 
+      ggplot2::scale_y_discrete(breaks = names(posterior_ridgenames), 
+                                labels = posterior_ridgenames,
+                                limits = c('covab'))
+    p4 <- bayesplot::mcmc_areas_ridges(select(med_post_ridges, cp, total),
+                                       prob = prob, prob_outer = prob_outer) + 
+      ggplot2::scale_y_discrete(breaks = names(posterior_ridgenames), 
+                                labels = posterior_ridgenames,
+                                limits = c('total', 'cp'))
+    print((p1 / p4) | (p2 / p3 ))
     cat('\n\n#### Summary\n\n')
     print(knitr::kable(posterior_summary,
                        col.names = c('Median', 'Est. Error',
@@ -146,7 +185,7 @@ show_diagnostics <- function(fname, model_obj_dir){
 
 ```{r results = 'asis', message = FALSE}
 by_roi <- split(variable_combos, paste0(variable_combos$model, variable_combos$number))
-
+bayesplot::color_scheme_set('red')
 for(i in 1:7){
   aset <- by_roi[[i]]
   cat(
